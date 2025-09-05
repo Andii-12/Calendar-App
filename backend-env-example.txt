@@ -1,0 +1,17 @@
+# Backend Environment Variables for Railway
+# Copy this to backend/.env and fill in your actual values
+
+# MongoDB Atlas Connection
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/calendar-app?retryWrites=true&w=majority
+
+# JWT Secret (generate a strong secret)
+JWT_SECRET=your-super-secret-jwt-key-here-make-it-very-long-and-random
+
+# Server Port (Railway will set this automatically)
+PORT=5000
+
+# CORS Origins (add your Vercel domain)
+CORS_ORIGIN=https://your-app-name.vercel.app
+
+# Environment
+NODE_ENV=production

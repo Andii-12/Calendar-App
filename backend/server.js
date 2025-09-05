@@ -9,8 +9,15 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// CORS configuration
+const corsOptions = {
+  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -834,7 +841,18 @@ app.get('/api/magic-mirror/debug-all-data', async (req, res) => {
   }
 });
 
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`CORS Origin: ${process.env.CORS_ORIGIN || 'http://localhost:3000'}`);
 });

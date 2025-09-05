@@ -1,0 +1,8 @@
+# Frontend Environment Variables for Vercel
+# Copy this to frontend/.env.local and fill in your actual values
+
+# Backend API URL (your Railway backend URL)
+NEXT_PUBLIC_API_URL=https://your-backend-app.railway.app
+
+# Environment
+NODE_ENV=production
