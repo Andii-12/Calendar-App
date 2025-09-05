@@ -2,7 +2,7 @@
 # Copy this to frontend/.env.local and fill in your actual values
 
 # Backend API URL (your Railway backend URL)
-NEXT_PUBLIC_API_URL=https://your-backend-app.railway.app
+NEXT_PUBLIC_API_URL=https://calendar-app-production-6d2d.up.railway.app
 
 # Environment
 NODE_ENV=production
