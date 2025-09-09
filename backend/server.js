@@ -813,6 +813,305 @@ app.get('/api/magic-mirror/future-data', async (req, res) => {
   }
 });
 
+// User-friendly Magic Mirror API - Easy to read format
+app.get('/api/magic-mirror/easy-read', async (req, res) => {
+  try {
+    const today = new Date();
+    const utcToday = new Date(today.getTime() - (today.getTimezoneOffset() * 60000));
+    utcToday.setUTCHours(0, 0, 0, 0);
+
+    const users = await User.find({}, 'name email').lean();
+    const easyReadData = [];
+    
+    for (const user of users) {
+      // Get future events (today and beyond)
+      const events = await Event.find({
+        userId: user._id,
+        startDate: { $gte: utcToday }
+      }).sort({ startDate: 1 }).lean();
+
+      // Get future lists (today and beyond)
+      const lists = await List.find({
+        userId: user._id,
+        listDate: { $gte: utcToday }
+      }).sort({ listDate: 1 }).lean();
+
+      // Format events in easy-to-read way
+      const formattedEvents = events.map(event => {
+        const eventDate = new Date(event.startDate);
+        return {
+          title: event.title,
+          description: event.description || 'No description',
+          date: eventDate.toLocaleDateString('en-US', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+          }),
+          time: event.allDay ? 'All Day' : eventDate.toLocaleTimeString('en-US', { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+          }),
+          color: event.color
+        };
+      });
+
+      // Format lists in easy-to-read way
+      const formattedLists = lists.map(list => {
+        const listDate = new Date(list.listDate);
+        const completedItems = list.items.filter(item => item.completed).length;
+        const totalItems = list.items.length;
+        
+        return {
+          title: list.title,
+          description: list.description || 'No description',
+          date: listDate.toLocaleDateString('en-US', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+          }),
+          progress: `${completedItems}/${totalItems} tasks completed`,
+          items: list.items.map(item => ({
+            title: item.title,
+            description: item.description || 'No description',
+            status: item.completed ? '✅ Completed' : '⏳ Pending'
+          }))
+        };
+      });
+
+      easyReadData.push({
+        user: user.name,
+        email: user.email,
+        upcomingEvents: formattedEvents,
+        todoLists: formattedLists,
+        summary: {
+          totalEvents: formattedEvents.length,
+          totalLists: formattedLists.length,
+          totalTasks: formattedLists.reduce((sum, list) => sum + list.items.length, 0)
+        }
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: "📅 Your Calendar Data - Easy to Read Format",
+      generatedOn: today.toLocaleString('en-US', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }),
+      data: easyReadData,
+      totalUsers: easyReadData.length
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false,
+      error: "Failed to fetch calendar data",
+      details: error.message 
+    });
+  }
+});
+
+// HTML view for Magic Mirror API - Even easier to read
+app.get('/api/magic-mirror/html-view', async (req, res) => {
+  try {
+    const today = new Date();
+    const utcToday = new Date(today.getTime() - (today.getTimezoneOffset() * 60000));
+    utcToday.setUTCHours(0, 0, 0, 0);
+
+    const users = await User.find({}, 'name email').lean();
+    let htmlContent = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Calendar Data - Easy View</title>
+        <style>
+            body { 
+                font-family: Arial, sans-serif; 
+                margin: 20px; 
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+            }
+            .container { 
+                max-width: 1200px; 
+                margin: 0 auto; 
+                background: rgba(255,255,255,0.1);
+                padding: 20px;
+                border-radius: 15px;
+                backdrop-filter: blur(10px);
+            }
+            .user-section { 
+                margin-bottom: 30px; 
+                padding: 20px; 
+                background: rgba(255,255,255,0.1);
+                border-radius: 10px;
+                border-left: 5px solid #3b82f6;
+            }
+            .events, .lists { 
+                margin-top: 15px; 
+            }
+            .event, .list { 
+                background: rgba(255,255,255,0.1); 
+                padding: 15px; 
+                margin: 10px 0; 
+                border-radius: 8px;
+                border-left: 4px solid #10b981;
+            }
+            .list { border-left-color: #f59e0b; }
+            .item { 
+                margin: 8px 0; 
+                padding: 8px; 
+                background: rgba(255,255,255,0.05);
+                border-radius: 5px;
+            }
+            .completed { text-decoration: line-through; opacity: 0.7; }
+            .header { text-align: center; margin-bottom: 30px; }
+            .summary { 
+                background: rgba(255,255,255,0.2); 
+                padding: 15px; 
+                border-radius: 10px; 
+                margin-bottom: 20px;
+                text-align: center;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>📅 Calendar & Todo Data</h1>
+                <p>Generated on: ${today.toLocaleString('en-US', { 
+                  weekday: 'long', 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}</p>
+            </div>
+    `;
+
+    for (const user of users) {
+      // Get future events (today and beyond)
+      const events = await Event.find({
+        userId: user._id,
+        startDate: { $gte: utcToday }
+      }).sort({ startDate: 1 }).lean();
+
+      // Get future lists (today and beyond)
+      const lists = await List.find({
+        userId: user._id,
+        listDate: { $gte: utcToday }
+      }).sort({ listDate: 1 }).lean();
+
+      const totalTasks = lists.reduce((sum, list) => sum + list.items.length, 0);
+      const completedTasks = lists.reduce((sum, list) => 
+        sum + list.items.filter(item => item.completed).length, 0
+      );
+
+      htmlContent += `
+        <div class="user-section">
+            <h2>👤 ${user.name}</h2>
+            <p>📧 ${user.email}</p>
+            
+            <div class="summary">
+                <strong>📊 Summary:</strong> 
+                ${events.length} upcoming events | 
+                ${lists.length} todo lists | 
+                ${completedTasks}/${totalTasks} tasks completed
+            </div>
+      `;
+
+      // Add events
+      if (events.length > 0) {
+        htmlContent += `<h3>📅 Upcoming Events (${events.length})</h3><div class="events">`;
+        events.forEach(event => {
+          const eventDate = new Date(event.startDate);
+          htmlContent += `
+            <div class="event">
+                <h4>${event.title}</h4>
+                <p><strong>📅 Date:</strong> ${eventDate.toLocaleDateString('en-US', { 
+                  weekday: 'long', 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric' 
+                })}</p>
+                <p><strong>⏰ Time:</strong> ${event.allDay ? 'All Day' : eventDate.toLocaleTimeString('en-US', { 
+                  hour: '2-digit', 
+                  minute: '2-digit' 
+                })}</p>
+                ${event.description ? `<p><strong>📝 Description:</strong> ${event.description}</p>` : ''}
+            </div>
+          `;
+        });
+        htmlContent += `</div>`;
+      } else {
+        htmlContent += `<p>No upcoming events</p>`;
+      }
+
+      // Add lists
+      if (lists.length > 0) {
+        htmlContent += `<h3>📋 Todo Lists (${lists.length})</h3><div class="lists">`;
+        lists.forEach(list => {
+          const listDate = new Date(list.listDate);
+          const completedCount = list.items.filter(item => item.completed).length;
+          htmlContent += `
+            <div class="list">
+                <h4>${list.title}</h4>
+                <p><strong>📅 Date:</strong> ${listDate.toLocaleDateString('en-US', { 
+                  weekday: 'long', 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric' 
+                })}</p>
+                <p><strong>📊 Progress:</strong> ${completedCount}/${list.items.length} tasks completed</p>
+                ${list.description ? `<p><strong>📝 Description:</strong> ${list.description}</p>` : ''}
+                <div class="items">
+                    <h5>Tasks:</h5>
+          `;
+          list.items.forEach(item => {
+            htmlContent += `
+              <div class="item ${item.completed ? 'completed' : ''}">
+                  ${item.completed ? '✅' : '⏳'} ${item.title}
+                  ${item.description ? `<br><small>${item.description}</small>` : ''}
+              </div>
+            `;
+          });
+          htmlContent += `</div></div>`;
+        });
+        htmlContent += `</div>`;
+      } else {
+        htmlContent += `<p>No todo lists</p>`;
+      }
+
+      htmlContent += `</div>`;
+    }
+
+    htmlContent += `
+        </div>
+    </body>
+    </html>
+    `;
+
+    res.setHeader('Content-Type', 'text/html');
+    res.send(htmlContent);
+  } catch (error) {
+    res.status(500).send(`
+      <html>
+        <body style="font-family: Arial, sans-serif; padding: 20px; background: #f0f0f0;">
+          <h1>❌ Error</h1>
+          <p>Failed to load calendar data: ${error.message}</p>
+        </body>
+      </html>
+    `);
+  }
+});
+
 // Debug API - Get all data without date filtering
 app.get('/api/magic-mirror/debug-all-data', async (req, res) => {
   try {
